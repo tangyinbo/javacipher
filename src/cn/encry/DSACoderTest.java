@@ -8,7 +8,7 @@ public class DSACoderTest {
        String inputStr = "abc";  
        byte[] data = inputStr.getBytes();  
  
-       // 构建密钥  
+       // 构建密钥    
        Map<String, Object> keyMap = DSACoder.initKey();  
  
        // 获得密钥  
