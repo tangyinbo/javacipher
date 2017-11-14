@@ -1,0 +1,238 @@
+import com.google.common.base.Throwables;
+import lombok.extern.slf4j.Slf4j;
+import sun.misc.BASE64Decoder;
+import sun.misc.BASE64Encoder;
+
+import javax.crypto.BadPaddingException;
+import javax.crypto.Cipher;
+import javax.crypto.IllegalBlockSizeException;
+import javax.crypto.NoSuchPaddingException;
+import java.io.IOException;
+import java.security.*;
+import java.security.interfaces.RSAPrivateKey;
+import java.security.interfaces.RSAPublicKey;
+import java.security.spec.InvalidKeySpecException;
+import java.security.spec.PKCS8EncodedKeySpec;
+import java.security.spec.X509EncodedKeySpec;
+import java.util.HashMap;
+import java.util.Map;
+
+/**
+ * RSA工具
+ */
+@Slf4j
+public class RSAUtil {
+    public static final String KEY_ALGORITHM = "RSA";
+    //public static final String SIGNATURE_ALGORITHM = "MD5withRSA";
+    /** 貌似默认是RSA/NONE/PKCS1Padding，未验证 */
+    public static final String CIPHER_ALGORITHM = "RSA/ECB/PKCS1Padding";
+    //public static final String CIPHER_ALGORITHM = "RSA/None/PKCS1Padding";
+    //public static final String CIPHER_ALGORITHM = "RSA";
+    private static final String PUBLIC_KEY = "RSAPublicKey";
+    private static final String PRIVATE_KEY = "RSAPrivateKey";
+
+    /**
+     * 生成公钥私钥
+     */
+    public static Map<String, Object> initKey() throws Exception {
+        KeyPairGenerator keyPairGen = KeyPairGenerator.getInstance(KEY_ALGORITHM);
+        keyPairGen.initialize(1024);
+        KeyPair keyPair = keyPairGen.generateKeyPair();
+        RSAPublicKey publicKey = (RSAPublicKey) keyPair.getPublic();
+        RSAPrivateKey privateKey = (RSAPrivateKey) keyPair.getPrivate();
+        Map<String, Object> keyMap = new HashMap<String, Object>(2);
+        keyMap.put(PUBLIC_KEY, publicKey);
+        keyMap.put(PRIVATE_KEY, privateKey);
+        return keyMap;
+    }
+
+    /**
+     * 密钥转为String
+     */
+    public static String getKeyString(Key key) throws Exception {
+        byte[] publicKey = key.getEncoded();
+        return encryptBASE64(publicKey);
+    }
+
+    /**
+     * 字节数组转为公钥, X509EncodedKeySpec 用于构建公钥的规范
+     */
+    public static PublicKey restorePublicKey(byte[] keyBytes) throws InvalidKeySpecException, NoSuchAlgorithmException {
+        X509EncodedKeySpec x509EncodedKeySpec = new X509EncodedKeySpec(keyBytes);
+        try {
+            KeyFactory factory = KeyFactory.getInstance(KEY_ALGORITHM);
+            PublicKey publicKey = factory.generatePublic(x509EncodedKeySpec);
+            return publicKey;
+        } catch (InvalidKeySpecException | NoSuchAlgorithmException e) {
+            log.error(Throwables.getStackTraceAsString(e));
+            throw e;
+        }
+    }
+
+    /**
+     * 字节数组转为私钥  PKCS8EncodedKeySpec 用于构建私钥的规范
+     */
+    public static PrivateKey restorePrivateKey(byte[] keyBytes) throws InvalidKeySpecException, NoSuchAlgorithmException {
+        PKCS8EncodedKeySpec pkcs8EncodedKeySpec = new PKCS8EncodedKeySpec(keyBytes);
+        try {
+            KeyFactory factory = KeyFactory.getInstance(KEY_ALGORITHM);
+            PrivateKey privateKey = factory.generatePrivate(pkcs8EncodedKeySpec);
+            return privateKey;
+        } catch (NoSuchAlgorithmException | InvalidKeySpecException e) {
+            log.error(Throwables.getStackTraceAsString(e));
+            throw e;
+        }
+    }
+
+    /**
+     * BASE64解码
+     */
+    public static byte[] decryptBASE64(String key) throws IOException {
+        return (new BASE64Decoder()).decodeBuffer(key);
+    }
+
+    /**
+     * BASE64编码
+     */
+    public static String encryptBASE64(byte[] key) {
+        return (new BASE64Encoder()).encodeBuffer(key);
+    }
+
+    /**
+     * 加密
+     */
+    public static byte[] rsaEncode(PublicKey key, byte[] plainText) throws IllegalBlockSizeException, InvalidKeyException, BadPaddingException, NoSuchAlgorithmException, NoSuchPaddingException {
+        try {
+            Cipher cipher = Cipher.getInstance(CIPHER_ALGORITHM);
+            cipher.init(Cipher.ENCRYPT_MODE, key);
+            return cipher.doFinal(plainText);
+        } catch (NoSuchAlgorithmException | NoSuchPaddingException
+                | InvalidKeyException | IllegalBlockSizeException
+                | BadPaddingException e) {
+            log.error(Throwables.getStackTraceAsString(e));
+            throw e;
+        }
+    }
+
+    /**
+     * 解密
+     */
+    public static String rsaDecode(PrivateKey key, byte[] encodedText) throws IllegalBlockSizeException, InvalidKeyException, BadPaddingException, NoSuchAlgorithmException, NoSuchPaddingException {
+        try {
+            Cipher cipher = Cipher.getInstance(CIPHER_ALGORITHM);
+            cipher.init(Cipher.DECRYPT_MODE, key);
+            return new String(cipher.doFinal(encodedText));
+        } catch (NoSuchAlgorithmException | NoSuchPaddingException
+                | InvalidKeyException | IllegalBlockSizeException
+                | BadPaddingException e) {
+            log.error(Throwables.getStackTraceAsString(e));
+            throw e;
+        }
+    }
+
+
+    /**
+     * 例子
+     * 生成公钥私钥,并对字符串加解密
+     */
+    private void test1(){
+        Map<String, Object> keyMap;
+        try {
+            keyMap = initKey();
+            RSAPublicKey rsaPublicKey = (RSAPublicKey)keyMap.get(PUBLIC_KEY);
+            RSAPrivateKey rsaPrivateKey = (RSAPrivateKey)keyMap.get(PRIVATE_KEY);
+
+            String text = "13712345678红红火火";
+            System.out.println("加密前:"+text);
+            byte[] encryptText = rsaEncode(rsaPublicKey,text.getBytes());
+            System.out.println("加密后:"+encryptText);
+            String decrypText = rsaDecode(rsaPrivateKey,encryptText);
+            System.out.println("解密后:"+decrypText);
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
+    }
+
+    /**
+     * 例子
+     * 生成公钥私钥, 转为String
+     */
+    private void test2(){
+        Map<String, Object> keyMap;
+        try {
+            keyMap = initKey();
+            System.out.println("公钥String:");
+            System.out.println(getKeyString((PublicKey) keyMap.get(PUBLIC_KEY)));
+            System.out.println("私钥String:");
+            System.out.println(getKeyString((PrivateKey) keyMap.get(PRIVATE_KEY)));
+
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
+    }
+
+    /**
+     * 例子
+     * 生成公钥私钥,转为String,再从String转为公钥私钥
+     */
+    private void test3(){
+        Map<String, Object> keyMap;
+        try {
+            keyMap = initKey();
+            String publicKeyString = getKeyString((PublicKey) keyMap.get(PUBLIC_KEY));
+            String privateKeyString = getKeyString((PrivateKey) keyMap.get(PRIVATE_KEY));
+            System.out.println(publicKeyString);
+            System.out.println(privateKeyString);
+
+            PublicKey publickey = restorePublicKey(decryptBASE64(publicKeyString));
+            PrivateKey privateKey = restorePrivateKey(decryptBASE64(privateKeyString));
+            String publicKeyString2 = getKeyString(publickey);
+            String privateKeyString2 = getKeyString(privateKey);
+            System.out.println(publicKeyString2);
+            System.out.println(privateKeyString2);
+
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
+    }
+
+
+    private void test4(){
+        try {
+            String publicKeyStr = "MIGfMA0GCSqGSIb3DQEBAQUAA4GNADCBiQKBgQCdEbXZ17neZ7IXRksjwbwKeJja8cgVmXBD9Q8T1/zbKFH5yPMcT1G2L8DJdkNnY/39httlTIGu872X0es45VHY0tJD6x1dCJgmpBNxRiPGIaD16Toh0wKMZ8f38pfDox5c8jE1+o0dWd97lvHERFsz1HCKC9HwS9MTRSiT38kRMQIDAQAB";
+            String privateKeyStr = "MIICdgIBADANBgkqhkiG9w0BAQEFAASCAmAwggJcAgEAAoGBAJ0RtdnXud5nshdGSyPBvAp4mNrxyBWZcEP1DxPX/NsoUfnI8xxPUbYvwMl2Q2dj/f2G22VMga7zvZfR6zjlUdjS0kPrHV0ImCakE3FGI8YhoPXpOiHTAoxnx/fyl8OjHlzyMTX6jR1Z33uW8cREWzPUcIoL0fBL0xNFKJPfyRExAgMBAAECgYByjhYpeXLwSITVAMmQnJ2+rVIebTTWu//rMHH8sQyT8oZHPU5CGX+o9o8O4Bgs8fquy4p8CR6UMOTYM5vw9R+JdRpllXvQnZKz4hAWE86IqjnwwpdMUwKwUHSlkD9jCWn+ncKXK2P5u0yKe4LYFhiAANzovGo6EN6TWZ/jTaUQeQJBAM+/ZMFvpMk1gIYAV17e/BAyxvxdhqS813NnN2OTfGjFd66U4e/GIQ3+ARs9cUn+AYEkgeoBel0P07EWEntq98MCQQDBjP4e0fJBRjZN3t61+w7P3ww0pA3Q8jZg5LtDI+ywHguJ2hDY8KttNtorxCiC98F9w6FruF4M4XRM8I4RCff7AkBQfNeddhLC/d6IjDNNh1jjMbkUZ2vWAW/7vx6fjrGhqfffhMEwc3O1BxcIpbpxr16H2UwYDHCLA6nBr0qD1IKfAkBZT5b/X79akWyDeEDqVkPadcDrFXxumyWuhj1G2O/hwKtwW9iEUmG4DqSTp3tOG8cEIl59F2EGro385s+XWzM7AkEAia4WWID1j+juED8inPjk7seYrMi+o7Eas+CHct3ty74QmFYzPkRcudJZkhpfwOLZ2aq7Cq1BhAUUbenUwck3KQ==";
+            PublicKey publickey = restorePublicKey(decryptBASE64(publicKeyStr));
+            PrivateKey privateKey = restorePrivateKey(decryptBASE64(privateKeyStr));
+            String text = "12345";
+            System.out.println("加密前:"+text);
+            byte[] encryptText = rsaEncode(publickey,text.getBytes());
+            System.out.println("加密后:"+encryptBASE64(encryptText));
+            String decrypText = rsaDecode(privateKey,encryptText);
+            System.out.println("解密后:"+decrypText);
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
+
+    }
+
+    //解密
+    private void test5(){
+        try {
+            String publicKeyStr = "MIGfMA0GCSqGSIb3DQEBAQUAA4GNADCBiQKBgQCdEbXZ17neZ7IXRksjwbwKeJja8cgVmXBD9Q8T1/zbKFH5yPMcT1G2L8DJdkNnY/39httlTIGu872X0es45VHY0tJD6x1dCJgmpBNxRiPGIaD16Toh0wKMZ8f38pfDox5c8jE1+o0dWd97lvHERFsz1HCKC9HwS9MTRSiT38kRMQIDAQAB";
+            String privateKeyStr = "MIICdgIBADANBgkqhkiG9w0BAQEFAASCAmAwggJcAgEAAoGBAJ0RtdnXud5nshdGSyPBvAp4mNrxyBWZcEP1DxPX/NsoUfnI8xxPUbYvwMl2Q2dj/f2G22VMga7zvZfR6zjlUdjS0kPrHV0ImCakE3FGI8YhoPXpOiHTAoxnx/fyl8OjHlzyMTX6jR1Z33uW8cREWzPUcIoL0fBL0xNFKJPfyRExAgMBAAECgYByjhYpeXLwSITVAMmQnJ2+rVIebTTWu//rMHH8sQyT8oZHPU5CGX+o9o8O4Bgs8fquy4p8CR6UMOTYM5vw9R+JdRpllXvQnZKz4hAWE86IqjnwwpdMUwKwUHSlkD9jCWn+ncKXK2P5u0yKe4LYFhiAANzovGo6EN6TWZ/jTaUQeQJBAM+/ZMFvpMk1gIYAV17e/BAyxvxdhqS813NnN2OTfGjFd66U4e/GIQ3+ARs9cUn+AYEkgeoBel0P07EWEntq98MCQQDBjP4e0fJBRjZN3t61+w7P3ww0pA3Q8jZg5LtDI+ywHguJ2hDY8KttNtorxCiC98F9w6FruF4M4XRM8I4RCff7AkBQfNeddhLC/d6IjDNNh1jjMbkUZ2vWAW/7vx6fjrGhqfffhMEwc3O1BxcIpbpxr16H2UwYDHCLA6nBr0qD1IKfAkBZT5b/X79akWyDeEDqVkPadcDrFXxumyWuhj1G2O/hwKtwW9iEUmG4DqSTp3tOG8cEIl59F2EGro385s+XWzM7AkEAia4WWID1j+juED8inPjk7seYrMi+o7Eas+CHct3ty74QmFYzPkRcudJZkhpfwOLZ2aq7Cq1BhAUUbenUwck3KQ==";
+            PublicKey publickey = restorePublicKey(decryptBASE64(publicKeyStr));
+            PrivateKey privateKey = restorePrivateKey(decryptBASE64(privateKeyStr));
+            String encryptText = "cRTKkc5851L5pBKTvL0QfvJCB7wAmII+dea/08HL3HJI1EBmJzt+7rqq20w/Sk62F0/Ojetwx12GuqrPDdlL+Jt2caSXrLaLnfRfHWzdBddW1IY28EXTVGUXAvJ2emKEO3IdyAnQ39kzsbu8hdhCI5cbgxTQypky2n7UvLxeEtM=";
+            String decrypText = rsaDecode(privateKey, decryptBASE64(encryptText));
+            System.out.println("解密后:" + decrypText);
+        }catch (Exception e){
+            e.printStackTrace();
+        }
+    }
+
+
+    public static void main(String[] args) {
+        new RSAUtil().test5();
+    }
+
+}
