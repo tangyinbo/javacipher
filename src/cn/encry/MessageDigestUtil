@@ -1,0 +1,47 @@
+public class MessageDigestUtil {
+
+    /**
+     * 消息摘要加密
+     * @param text 要加密的文本
+     * @param method 加密方式
+     * @return
+     * @throws NoSuchAlgorithmException
+     */
+    public static String encrypt (String text, String method) throws NoSuchAlgorithmException, UnsupportedEncodingException {
+        MessageDigest digest = MessageDigest.getInstance(method);
+        digest.update(text.getBytes("UTF-8"));
+        byte[] messageDigest = digest.digest();
+        // Create Hex String
+        StringBuffer hexSb = new StringBuffer();
+        String hex ;
+        // 字节数组转换为 十六进制数
+        for (int i = 0; i < messageDigest.length; i++) {
+            hex = Integer.toHexString(messageDigest[i] & 0xFF);
+            if (hex.length() < 2) {
+                hexSb.append(0);
+            }
+            hexSb.append(hex);
+        }
+        return hexSb.toString();
+    }
+
+
+
+
+    public static void main(String[] args){
+        try {
+            //System.out.println(MessageDigestUtil.encrypt("13450207679"+Constants.RANDOM_SIGN_STRING, CommonConstants.MESSAGE_DIGEST_SHA1));
+            //System.out.println(MessageDigestUtil.encrypt("13450207679"+Constants.RANDOM_SIGN_STRING, CommonConstants.MESSAGE_DIGEST_SHA256));
+            //System.out.println(MessageDigestUtil.encrypt("13450207679"+Constants.RANDOM_SIGN_STRING, CommonConstants.MESSAGE_DIGEST_MD5));
+            //String str = "{\"sysType\":\"ios\",\"sysVersion\":\"10.3.1\",\"appType\":\"00\",\"appVersion\":\"com.seebon.shabaomanager\",\"signType\":\"SHA256\",\"sign\":\"\",\"token\":\"\",\"traceLogId\":\"201708251621401552\",\"custId\":\"\",\"deviceName\":\"yfzx-gd-liujh\",\"imsi\":\"D0A398723E65497F8543B858DEA2736B\",\"imei\":\"D0A398723E65497F8543B858DEA2736B\",\"mtMac\":\"\",\"wifiMac\":\"\",\"locInfo\":\"\",\"baseVersion\":\"\",\"kernelVersion\":\"\",\"operaDesc\":\"\",\"aiDentifier\":\"D0A398723E65497F8543B858DEA2736B\",\"phoneNum\":\"18688880001\",\"verifyType\":\"2\"}";
+            //String sign = "{\"password\":\"DlRPQECI3PUSNu0JwHvuL8uUvmRO+Y86FCizPbmdLnjD51dp/e3zEhuW9sc4jyfcNOQTohLWBsOi\\nvrc/ELb0c+fViUdabJIK8sJ1JooIaG5tofQdNIW6kT8g+Z/dv5T9DIai9aqo3RHUU0sSRO3IsKsX\\nzjkCR2/X9XaHBRlE0yQ\\u003d\\n\",\"phoneNum\":\"13431094581\",\"smsVerifyCode\":\"123456\",\"aiDentifier\":\"\",\"appType\":\"00\",\"appVersion\":\"1.0.0\",\"baseVersion\":\"no message\",\"custId\":\"\",\"deviceName\":\"Android SDK built for x86\",\"imei\":\"000000000000000\",\"imsi\":\"310260000000000\",\"kernelVersion\":\"3.10.0+\",\"locInfo\":\"\",\"mtMac\":\"\",\"operaDesc\":\"generic_x86\",\"sign\":\"\",\"signType\":\"SHA256\",\"sysType\":\"android\",\"sysVersion\":\"4.2.2\",\"token\":\"\",\"traceLogId\":\"108838201709100037245318493701\",\"wifiMac\":\"\"}";
+            //String sign = "{\"password\":\"eYGYMaEDWBk813N25cDd3NrcjV25FUtvetJH6UQ4B24DDiwuT7I+51Ey2CYd+YxX6pjlr+lUrSni\\nYn8zbvDHmsNxnYMvtqQq4mkQCx8OeyckZKhogMOapS3gXRL16p06yk2q05Xb+OV3XwsXRo/VW2NH\\nktyZgFWs9Ojbv/e42VI=\\n\",\"phoneNum\":\"13431094581\",\"smsVerifyCode\":\"123456\",\"aiDentifier\":\"\",\"appType\":\"00\",\"appVersion\":\"1.0.0\",\"baseVersion\":\"no message\",\"custId\":\"\",\"deviceName\":\"Android SDK built for x86\",\"imei\":\"000000000000000\",\"imsi\":\"310260000000000\",\"kernelVersion\":\"3.10.0+\",\"locInfo\":\"\",\"mtMac\":\"\",\"operaDesc\":\"generic_x86\",\"sign\":\"\",\"signType\":\"SHA256\",\"sysType\":\"android\",\"sysVersion\":\"4.2.2\",\"token\":\"\",\"traceLogId\":\"103929201709100053426763696403\",\"wifiMac\":\"\"}";
+            //String sign = "{\"custId\":\"1\",\"sign\":\"\",\"traceLogId\":\"9998877\",\"token\":\"aassddff\",\"channelType\":\"SHE_BAO\",\"zyh\":\"123\"}";
+            String sign = "{\"sysType\":\"ios\",\"sysVersion\":\"11.0\",\"appType\":\"00\",\"appVersion\":\"1.0.0\",\"signType\":\"SHA256\",\"sign\":\"\",\"token\":\"UqjzL5PHKrsF0XSw\",\"traceLogId\":\"201709292132304031\",\"custId\":\"1000\",\"deviceName\":\"yfzx-gd-liujh\",\"imsi\":\"A1F424B8A04F437E98A221BF05457AE8\",\"imei\":\"A1F424B8A04F437E98A221BF05457AE8\",\"mtMac\":\"\",\"wifiMac\":\"\",\"locInfo\":\"\",\"baseVersion\":\"\",\"kernelVersion\":\"\",\"operaDesc\":\"\",\"aiDentifier\":\"A1F424B8A04F437E98A221BF05457AE8\",\"appWb\":\"SBGJ\",\"categoryWb\":\"HE001\",\"page\":1,\"crtTime\":1506691950,\"childCategoryWb\":\"社保\"}";
+            System.out.println(sign);
+            System.out.println(MessageDigestUtil.encrypt(sign + "Se^#4%e-b8#o)&nS^5h@^a!b%7*a_%^o", CommonConstants.MESSAGE_DIGEST_SHA256));//SHA-256
+        }catch (Exception e){
+            log.error(Throwables.getStackTraceAsString(e));
+        }
+    }
+}
